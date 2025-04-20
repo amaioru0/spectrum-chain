@@ -1,4 +1,4 @@
-// Wallet and CLI implementation for Spectrum Chain
+// At the top of the file, fix your imports:
 package wallet
 
 import (
@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/amaioru0/spectrum-chain/core/blockchain"
-	"github.com/amaioru0/spectrum-chain/core/network"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/amaioru0/spectrum-chain/core/network" // Correct import for network package
+	"github.com/btcsuite/btcd/btcec/v2"               // Updated btcec import
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 )
@@ -33,11 +33,11 @@ type Account struct {
 
 // Wallet manages user accounts and transactions
 type Wallet struct {
-	Accounts      map[string]Account `json:"accounts"`
-	ActiveAccount string             `json:"active_account"`
-	WalletPath    string             `json:"-"`
-	blockchain    *blockchain.Blockchain
-	network       *network.NetworkManager
+	Accounts       map[string]Account `json:"accounts"`
+	ActiveAccount  string             `json:"active_account"`
+	WalletPath     string             `json:"-"`
+	blockchain     *blockchain.Blockchain
+	networkManager *network.NetworkManager
 }
 
 // NewWallet creates a new wallet or loads an existing one

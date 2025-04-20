@@ -1,4 +1,4 @@
-// Virtual Machine management for Spectrum Chain
+// At the top of the file, fix your imports:
 package vm
 
 import (
@@ -17,7 +17,7 @@ import (
 	"github.com/amaioru0/spectrum-chain/core/network"
 	"github.com/amaioru0/spectrum-chain/core/utils"
 	"github.com/docker/docker/client"
-	"github.com/libvirt/libvirt-go"
+	"github.com/libvirt/libvirt-go" // Make sure this import exists
 )
 
 // ResourceAllocation tracks resources allocated to the global VM

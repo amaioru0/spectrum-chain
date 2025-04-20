@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -295,9 +295,18 @@ func ParseSize(s string) (int64, error) {
 }
 
 // ParseInt64 parses an int64 from a string
+// ParseInt64 parses an int64 from a string
 func ParseInt64(s string) (int64, error) {
 	s = strings.TrimSpace(s)
-	return new(big.Int).SetString(s, 10)
+	bigInt, success := new(big.Int).SetString(s, 10)
+	if !success {
+		return 0, fmt.Errorf("failed to parse integer from string: %s", s)
+	}
+	// Check if the value fits in an int64
+	if !bigInt.IsInt64() {
+		return 0, fmt.Errorf("value too large for int64: %s", s)
+	}
+	return bigInt.Int64(), nil
 }
 
 // TimeTrack is used for performance tracking

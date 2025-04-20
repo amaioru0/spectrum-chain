@@ -262,7 +262,7 @@ func (bc *Blockchain) calculateDifficulty() uint32 {
 	// Get the last block
 	lastBlock, err := bc.GetLastBlock()
 	if err != nil {
-		return currentDifficulty
+		return uint32(currentDifficulty)
 	}
 
 	// Only adjust difficulty at certain intervals
@@ -274,7 +274,7 @@ func (bc *Blockchain) calculateDifficulty() uint32 {
 	prevAdjustmentHeight := lastBlock.Header.Height - DifficultyAdjustInterval
 	prevAdjustmentBlock, err := bc.GetBlockByHeight(prevAdjustmentHeight)
 	if err != nil {
-		return currentDifficulty
+		return uint32(currentDifficulty)
 	}
 
 	// Calculate time taken to mine blocks in the interval
