@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  bootstrap-node:
+    build: .
+    container_name: spectrum-bootstrap
+    environment:
+      - DATA_DIR=/app/data
+      - LISTEN_ADDR=:9000
+      - API_ADDR=:8000
+      - IS_BOOTSTRAP=true
+      - MINER_ENABLED=true
+      - LOG_LEVEL=info
+    ports:
+      - "9000:9000"
+      - "8000:8000"
+    volumes:
+      - bootstrap-data:/app/data
+    restart: unless-stopped
+
+  node1:
+    build: .
+    container_name: spectrum-node1
+    depends_on:
+      - bootstrap-node
+    environment:
+      - DATA_DIR=/app/data
+      - LISTEN_ADDR=:9000
+      - API_ADDR=:8000
+      - BOOTSTRAP_NODES=bootstrap-node:9000
+      - MINER_ENABLED=true
+      - VM_ENABLED=true
+      - SSH_ENABLED=true
+      - SSH_PORT=2222
+      - LOG_LEVEL=info
+    ports:
+      - "9001:9000"
+      - "8001:8000"
+      - "2222:2222"
+    volumes:
+      - node1-data:/app/data
+    restart: unless-stopped
+
+  node2:
+    build: .
+    container_name: spectrum-node2
+    depends_on:
+      - bootstrap-node
+    environment:
+      - DATA_DIR=/app/data
+      - LISTEN_ADDR=:9000
+      - API_ADDR=:8000
+      - BOOTSTRAP_NODES=bootstrap-node:9000
+      - MINER_ENABLED=true
+      - VM_ENABLED=true
+      - SSH_ENABLED=true
+      - SSH_PORT=2222
+      - LOG_LEVEL=info
+    ports:
+      - "9002:9000"
+      - "8002:8000"
+      - "2223:2222"
+    volumes:
+      - node2-data:/app/data
+    restart: unless-stopped
+
+  node3:
+    build: .
+    container_name: spectrum-node3
+    depends_on:
+      - bootstrap-node
+    environment:
+      - DATA_DIR=/app/data
+      - LISTEN_ADDR=:9000
+      - API_ADDR=:8000
+      - BOOTSTRAP_NODES=bootstrap-node:9000
+      - MINER_ENABLED=false
+      - VM_ENABLED=true
+      - SSH_ENABLED=false
+      - LOG_LEVEL=info
+    ports:
+      - "9003:9000"
+      - "8003:8000"
+    volumes:
+      - node3-data:/app/data
+    restart: unless-stopped
+
+  wallet:
+    build: .
+    container_name: spectrum-wallet
+    command: wallet
+    environment:
+      - DATA_DIR=/app/data
+    volumes:
+      - wallet-data:/app/data
+    tty: true
+    stdin_open: true
+
+volumes:
+  bootstrap-data:
+  node1-data:
+  node2-data:
+  node3-data:
+  wallet-data:
