@@ -11,18 +11,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/amaioru0/spectrum-chain/core/blockchain"
+	"github.com/amaioru0/spectrum-chain/core/network"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
-	"github.com/spectrum-chain/core/blockchain"
-	"github.com/spectrum-chain/core/network"
 )
 
 // Account represents a user account in the wallet
@@ -35,11 +33,11 @@ type Account struct {
 
 // Wallet manages user accounts and transactions
 type Wallet struct {
-	Accounts     map[string]Account `json:"accounts"`
-	ActiveAccount string            `json:"active_account"`
-	WalletPath   string             `json:"-"`
-	blockchain   *blockchain.Blockchain
-	network      *network.NetworkManager
+	Accounts      map[string]Account `json:"accounts"`
+	ActiveAccount string             `json:"active_account"`
+	WalletPath    string             `json:"-"`
+	blockchain    *blockchain.Blockchain
+	network       *network.NetworkManager
 }
 
 // NewWallet creates a new wallet or loads an existing one
@@ -48,14 +46,14 @@ func NewWallet(walletPath string) (*Wallet, error) {
 		Accounts:   make(map[string]Account),
 		WalletPath: walletPath,
 	}
-	
+
 	// Load existing wallet if available
 	if _, err := os.Stat(walletPath); err == nil {
 		data, err := os.ReadFile(walletPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read wallet file: %w", err)
 		}
-		
+
 		if err := json.Unmarshal(data, wallet); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal wallet data: %w", err)
 		}
@@ -64,15 +62,15 @@ func NewWallet(walletPath string) (*Wallet, error) {
 		if err := wallet.CreateAccount("default"); err != nil {
 			return nil, fmt.Errorf("failed to create default account: %w", err)
 		}
-		
+
 		wallet.ActiveAccount = "default"
-		
+
 		// Save the new wallet
 		if err := wallet.Save(); err != nil {
 			return nil, fmt.Errorf("failed to save new wallet: %w", err)
 		}
 	}
-	
+
 	return wallet, nil
 }
 
@@ -92,26 +90,26 @@ func (w *Wallet) CreateAccount(name string) error {
 	if _, exists := w.Accounts[name]; exists {
 		return fmt.Errorf("account '%s' already exists", name)
 	}
-	
+
 	// Generate a new private key
 	privateKey, err := ecdsa.GenerateKey(btcec.S256(), rand.Reader)
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
-	
+
 	// Get public key
 	publicKey := privateKey.PublicKey
-	
+
 	// Generate address from public key
 	address := crypto.PubkeyToAddress(publicKey).Hex()
-	
+
 	// Convert keys to hex strings
 	privateKeyBytes := crypto.FromECDSA(privateKey)
 	privateKeyHex := hex.EncodeToString(privateKeyBytes)
-	
+
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
 	publicKeyHex := hex.EncodeToString(publicKeyBytes)
-	
+
 	// Create account
 	account := Account{
 		Address:    address,
@@ -119,10 +117,10 @@ func (w *Wallet) CreateAccount(name string) error {
 		PublicKey:  publicKeyHex,
 		Balance:    0,
 	}
-	
+
 	// Add account to wallet
 	w.Accounts[name] = account
-	
+
 	// Save wallet
 	return w.Save()
 }
@@ -132,12 +130,12 @@ func (w *Wallet) GetActiveAccount() (Account, error) {
 	if w.ActiveAccount == "" {
 		return Account{}, errors.New("no active account")
 	}
-	
+
 	account, exists := w.Accounts[w.ActiveAccount]
 	if !exists {
 		return Account{}, fmt.Errorf("active account '%s' not found", w.ActiveAccount)
 	}
-	
+
 	return account, nil
 }
 
@@ -146,7 +144,7 @@ func (w *Wallet) SetActiveAccount(name string) error {
 	if _, exists := w.Accounts[name]; !exists {
 		return fmt.Errorf("account '%s' not found", name)
 	}
-	
+
 	w.ActiveAccount = name
 	return w.Save()
 }
@@ -156,12 +154,12 @@ func (w *Wallet) GetBalance(accountName string) (uint64, error) {
 	if w.blockchain == nil {
 		return 0, errors.New("blockchain not set")
 	}
-	
+
 	account, exists := w.Accounts[accountName]
 	if !exists {
 		return 0, fmt.Errorf("account '%s' not found", accountName)
 	}
-	
+
 	// In a real implementation, we would query the blockchain for UTXOs
 	// For simplicity, we'll just return the cached balance
 	return account.Balance, nil
@@ -172,10 +170,10 @@ func (w *Wallet) UpdateBalances() error {
 	if w.blockchain == nil {
 		return errors.New("blockchain not set")
 	}
-	
+
 	// In a real implementation, we would scan the blockchain for UTXOs
 	// For simplicity, this is just a placeholder
-	
+
 	// Save updated balances
 	return w.Save()
 }
@@ -185,31 +183,31 @@ func (w *Wallet) CreateTransaction(from string, to string, amount uint64) (*bloc
 	if w.blockchain == nil {
 		return nil, errors.New("blockchain not set")
 	}
-	
+
 	fromAccount, exists := w.Accounts[from]
 	if !exists {
 		return nil, fmt.Errorf("sender account '%s' not found", from)
 	}
-	
+
 	// Check balance
 	if fromAccount.Balance < amount {
 		return nil, fmt.Errorf("insufficient balance: have %d, need %d", fromAccount.Balance, amount)
 	}
-	
+
 	// Create inputs
 	// In a real implementation, we would select appropriate UTXOs
 	var inputs []blockchain.TxInput
-	
+
 	// Create outputs
 	var outputs []blockchain.TxOutput
-	
+
 	// Output for recipient
 	recipientOutput := blockchain.TxOutput{
 		Value:      amount,
 		PubKeyHash: []byte(to), // In a real implementation, this would be properly hashed
 	}
 	outputs = append(outputs, recipientOutput)
-	
+
 	// Change output
 	if fromAccount.Balance > amount {
 		changeOutput := blockchain.TxOutput{
@@ -218,7 +216,7 @@ func (w *Wallet) CreateTransaction(from string, to string, amount uint64) (*bloc
 		}
 		outputs = append(outputs, changeOutput)
 	}
-	
+
 	// Create transaction
 	tx := &blockchain.Transaction{
 		Inputs:    inputs,
@@ -226,35 +224,35 @@ func (w *Wallet) CreateTransaction(from string, to string, amount uint64) (*bloc
 		Timestamp: time.Now().Unix(),
 		PublicKey: []byte(fromAccount.PublicKey),
 	}
-	
+
 	// Calculate transaction ID
 	tx.ID = tx.Hash()
-	
+
 	// Sign transaction
 	privateKeyBytes, err := hex.DecodeString(fromAccount.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode private key: %w", err)
 	}
-	
+
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
-	
+
 	txData, err := json.Marshal(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal transaction: %w", err)
 	}
-	
+
 	hash := sha256.Sum256(txData)
-	
+
 	signature, err := crypto.Sign(hash[:], privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
-	
+
 	tx.Signature = signature
-	
+
 	return tx, nil
 }
 
@@ -263,39 +261,39 @@ func (w *Wallet) SendTransaction(from string, to string, amount uint64) error {
 	if w.blockchain == nil || w.network == nil {
 		return errors.New("blockchain or network not set")
 	}
-	
+
 	// Create transaction
 	tx, err := w.CreateTransaction(from, to, amount)
 	if err != nil {
 		return err
 	}
-	
+
 	// Add to blockchain
 	if err := w.blockchain.AddTransaction(tx); err != nil {
 		return fmt.Errorf("failed to add transaction to blockchain: %w", err)
 	}
-	
+
 	// Broadcast transaction
 	txData, err := json.Marshal(tx)
 	if err != nil {
 		return fmt.Errorf("failed to marshal transaction: %w", err)
 	}
-	
+
 	msg := network.Message{
 		Type:      "transaction",
 		Data:      txData,
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	if err := w.network.BroadcastMessage(&msg); err != nil {
 		return fmt.Errorf("failed to broadcast transaction: %w", err)
 	}
-	
+
 	// Update account balances
 	fromAccount := w.Accounts[from]
 	fromAccount.Balance -= amount
 	w.Accounts[from] = fromAccount
-	
+
 	// Save wallet
 	return w.Save()
 }
@@ -306,28 +304,28 @@ func (w *Wallet) ImportAccount(name string, privateKeyHex string) error {
 	if _, exists := w.Accounts[name]; exists {
 		return fmt.Errorf("account '%s' already exists", name)
 	}
-	
+
 	// Parse private key
 	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %w", err)
 	}
-	
+
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %w", err)
 	}
-	
+
 	// Get public key
 	publicKey := privateKey.PublicKey
-	
+
 	// Generate address
 	address := crypto.PubkeyToAddress(publicKey).Hex()
-	
+
 	// Convert public key to hex
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
 	publicKeyHex := hex.EncodeToString(publicKeyBytes)
-	
+
 	// Create account
 	account := Account{
 		Address:    address,
@@ -335,10 +333,10 @@ func (w *Wallet) ImportAccount(name string, privateKeyHex string) error {
 		PublicKey:  publicKeyHex,
 		Balance:    0, // Will be updated when blockchain is set
 	}
-	
+
 	// Add account to wallet
 	w.Accounts[name] = account
-	
+
 	// Save wallet
 	return w.Save()
 }
@@ -349,7 +347,7 @@ func (w *Wallet) ExportAccount(name string) (string, error) {
 	if !exists {
 		return "", fmt.Errorf("account '%s' not found", name)
 	}
-	
+
 	return account.PrivateKey, nil
 }
 
@@ -368,19 +366,19 @@ func (w *Wallet) Save() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal wallet data: %w", err)
 	}
-	
+
 	if err := os.WriteFile(w.WalletPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write wallet file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // CLI represents the command-line interface
 type CLI struct {
-	wallet *Wallet
+	wallet  *Wallet
 	rootCmd *cobra.Command
-	reader *bufio.Reader
+	reader  *bufio.Reader
 }
 
 // NewCLI creates a new CLI instance
@@ -389,14 +387,14 @@ func NewCLI(wallet *Wallet) *CLI {
 		wallet: wallet,
 		reader: bufio.NewReader(os.Stdin),
 	}
-	
+
 	// Create root command
 	rootCmd := &cobra.Command{
 		Use:   "spectrum-wallet",
 		Short: "Spectrum Chain wallet CLI",
 		Long:  "Command-line interface for Spectrum Chain wallet",
 	}
-	
+
 	// Add commands
 	rootCmd.AddCommand(cli.createAccountCmd())
 	rootCmd.AddCommand(cli.listAccountsCmd())
@@ -406,9 +404,9 @@ func NewCLI(wallet *Wallet) *CLI {
 	rootCmd.AddCommand(cli.importAccountCmd())
 	rootCmd.AddCommand(cli.exportAccountCmd())
 	rootCmd.AddCommand(cli.interactiveCmd())
-	
+
 	cli.rootCmd = rootCmd
-	
+
 	return cli
 }
 
@@ -425,19 +423,19 @@ func (cli *CLI) createAccountCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			
+
 			if err := cli.wallet.CreateAccount(name); err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Account '%s' created successfully\n", name)
 			account := cli.wallet.Accounts[name]
 			fmt.Printf("Address: %s\n", account.Address)
-			
+
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -449,12 +447,12 @@ func (cli *CLI) listAccountsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			accounts := cli.wallet.ListAccounts()
 			activeAccount := cli.wallet.ActiveAccount
-			
+
 			if len(accounts) == 0 {
 				fmt.Println("No accounts found")
 				return nil
 			}
-			
+
 			fmt.Println("Accounts:")
 			for _, account := range accounts {
 				if activeAccount == account.Address {
@@ -463,11 +461,11 @@ func (cli *CLI) listAccountsCmd() *cobra.Command {
 					fmt.Printf("  %s: %s (Balance: %d SPECTRUM)\n", account.Address, account.Balance)
 				}
 			}
-			
+
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -479,16 +477,16 @@ func (cli *CLI) setActiveAccountCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			
+
 			if err := cli.wallet.SetActiveAccount(name); err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Active account set to '%s'\n", name)
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -500,7 +498,7 @@ func (cli *CLI) getBalanceCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var name string
-			
+
 			if len(args) == 0 {
 				// Use active account
 				activeAccount, err := cli.wallet.GetActiveAccount()
@@ -511,17 +509,17 @@ func (cli *CLI) getBalanceCmd() *cobra.Command {
 			} else {
 				name = args[0]
 			}
-			
+
 			balance, err := cli.wallet.GetBalance(name)
 			if err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Balance of '%s': %d SPECTRUM\n", name, balance)
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -534,21 +532,21 @@ func (cli *CLI) sendCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			from := args[0]
 			to := args[1]
-			
+
 			amount, err := strconv.ParseUint(args[2], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid amount: %w", err)
 			}
-			
+
 			if err := cli.wallet.SendTransaction(from, to, amount); err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Sent %d SPECTRUM from '%s' to '%s'\n", amount, from, to)
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -561,19 +559,19 @@ func (cli *CLI) importAccountCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			privateKey := args[1]
-			
+
 			if err := cli.wallet.ImportAccount(name, privateKey); err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Account '%s' imported successfully\n", name)
 			account := cli.wallet.Accounts[name]
 			fmt.Printf("Address: %s\n", account.Address)
-			
+
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -585,19 +583,19 @@ func (cli *CLI) exportAccountCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			
+
 			privateKey, err := cli.wallet.ExportAccount(name)
 			if err != nil {
 				return err
 			}
-			
+
 			fmt.Printf("Private key for '%s': %s\n", name, privateKey)
 			fmt.Println("KEEP THIS PRIVATE KEY SAFE! Anyone with this key can access your funds.")
-			
+
 			return nil
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -610,7 +608,7 @@ func (cli *CLI) interactiveCmd() *cobra.Command {
 			return cli.startInteractiveShell()
 		},
 	}
-	
+
 	return cmd
 }
 
@@ -618,7 +616,7 @@ func (cli *CLI) interactiveCmd() *cobra.Command {
 func (cli *CLI) startInteractiveShell() error {
 	fmt.Println("Spectrum Chain Wallet Interactive Shell")
 	fmt.Println("Type 'help' for available commands")
-	
+
 	for {
 		// Print prompt
 		activeAccount, err := cli.wallet.GetActiveAccount()
@@ -627,7 +625,7 @@ func (cli *CLI) startInteractiveShell() error {
 		} else {
 			fmt.Print("> ")
 		}
-		
+
 		// Read command
 		line, err := cli.reader.ReadString('\n')
 		if err != nil {
@@ -636,7 +634,7 @@ func (cli *CLI) startInteractiveShell() error {
 			}
 			return err
 		}
-		
+
 		// Process command
 		if err := cli.processCommand(strings.TrimSpace(line)); err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -649,11 +647,11 @@ func (cli *CLI) processCommand(command string) error {
 	if command == "" {
 		return nil
 	}
-	
+
 	parts := strings.Split(command, " ")
 	cmd := parts[0]
 	args := parts[1:]
-	
+
 	switch cmd {
 	case "help":
 		cli.printHelp()
@@ -708,7 +706,7 @@ func (cli *CLI) processCommand(command string) error {
 	default:
 		return fmt.Errorf("unknown command: %s", cmd)
 	}
-	
+
 	return nil
 }
 
@@ -731,23 +729,23 @@ func (cli *CLI) createAccount(name string) error {
 	if err := cli.wallet.CreateAccount(name); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Account '%s' created successfully\n", name)
 	account := cli.wallet.Accounts[name]
 	fmt.Printf("Address: %s\n", account.Address)
-	
+
 	return nil
 }
 
 func (cli *CLI) listAccounts() error {
 	accounts := cli.wallet.ListAccounts()
 	activeAccount := cli.wallet.ActiveAccount
-	
+
 	if len(accounts) == 0 {
 		fmt.Println("No accounts found")
 		return nil
 	}
-	
+
 	fmt.Println("Accounts:")
 	for _, account := range accounts {
 		if activeAccount == account.Address {
@@ -756,7 +754,7 @@ func (cli *CLI) listAccounts() error {
 			fmt.Printf("  %s: %s (Balance: %d SPECTRUM)\n", account.Address, account.Balance)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -764,7 +762,7 @@ func (cli *CLI) setActiveAccount(name string) error {
 	if err := cli.wallet.SetActiveAccount(name); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Active account set to '%s'\n", name)
 	return nil
 }
@@ -774,7 +772,7 @@ func (cli *CLI) getBalance(name string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Balance of '%s': %d SPECTRUM\n", name, balance)
 	return nil
 }
@@ -783,7 +781,7 @@ func (cli *CLI) sendTokens(from, to string, amount uint64) error {
 	if err := cli.wallet.SendTransaction(from, to, amount); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Sent %d SPECTRUM from '%s' to '%s'\n", amount, from, to)
 	return nil
 }
@@ -792,11 +790,11 @@ func (cli *CLI) importAccount(name, privateKey string) error {
 	if err := cli.wallet.ImportAccount(name, privateKey); err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Account '%s' imported successfully\n", name)
 	account := cli.wallet.Accounts[name]
 	fmt.Printf("Address: %s\n", account.Address)
-	
+
 	return nil
 }
 
@@ -805,9 +803,9 @@ func (cli *CLI) exportAccount(name string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Private key for '%s': %s\n", name, privateKey)
 	fmt.Println("KEEP THIS PRIVATE KEY SAFE! Anyone with this key can access your funds.")
-	
+
 	return nil
 }

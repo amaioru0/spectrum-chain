@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spectrum-chain/core/blockchain"
-	"github.com/spectrum-chain/core/wallet"
+	"github.com/amaioru0/spectrum-chain/core/blockchain"
+	"github.com/amaioru0/spectrum-chain/core/wallet"
 )
 
 const (

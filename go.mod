@@ -1,4 +1,4 @@
-module github.com/spectrum-chain/core
+module github.com/amaioru0/spectrum-chain/core
 
 go 1.19
 

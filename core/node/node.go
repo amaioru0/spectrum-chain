@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amaioru0/spectrum-chain/core/blockchain"
+	"github.com/amaioru0/spectrum-chain/core/consensus"
+	"github.com/amaioru0/spectrum-chain/core/network"
+	"github.com/amaioru0/spectrum-chain/core/vm"
+	"github.com/amaioru0/spectrum-chain/core/wallet"
 	"github.com/gorilla/mux"
-	"github.com/spectrum-chain/core/blockchain"
-	"github.com/spectrum-chain/core/consensus"
-	"github.com/spectrum-chain/core/network"
-	"github.com/spectrum-chain/core/vm"
-	"github.com/spectrum-chain/core/wallet"
 )
 
 // NodeConfig holds configuration for a node
